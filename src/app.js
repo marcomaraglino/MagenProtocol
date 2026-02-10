@@ -288,6 +288,10 @@ function setLiqMode(mode) {
 
     if (mode === 'add') document.getElementById('liqAdd').style.display = 'block';
     if (mode === 'remove') document.getElementById('liqRemove').style.display = 'block';
+
+    // Add Zap Out Mode visibility if we add a 3rd tab, or just put button in remove?
+    // User asked for "button where I can swap my lptoken (the liquidity token to my usdc)"
+    // Let's add it to the 'remove' section as an alternative action.
 }
 
 function initChart() {
@@ -463,6 +467,36 @@ async function handleLiqRemove() {
         statusDiv.innerText = "Liquidity Removed! (Received SI + NO)";
         updateStats();
     } catch (e) { statusDiv.innerText = "Remove LP Failed: " + e.message; }
+}
+
+async function handleLiqRemoveZap() {
+    const lp = document.getElementById('removeLP').value;
+    if (!lp) return;
+
+    statusDiv.innerText = "Zapping Out LP...";
+    try {
+        const weiLP = web3.utils.toWei(lp, 'ether');
+
+        // Check Balance
+        const bal = await uniswapPair.methods.balanceOf(accounts[0]).call();
+        if (web3.utils.toBN(bal).lt(web3.utils.toBN(weiLP))) {
+            throw new Error("Insufficient LP Balance");
+        }
+
+        // Approve Router (MagenRouter) to spend LP
+        // The MagenRouter needs to pull LP tokens to burn them
+        // Wait, removeLiquidityZap in Router calls transferFrom(msg.sender, this, lpAmount)
+        // So we need to approve MagenRouter, NOT UniswapRouter directly for this Zap.
+
+        statusDiv.innerText = "Approving LP to MagenRouter...";
+        await uniswapPair.methods.approve(magenRouter.options.address, weiLP).send({ from: accounts[0] });
+
+        statusDiv.innerText = "Zapping LP to USDC...";
+        await magenRouter.methods.removeLiquidityZap(weiLP).send({ from: accounts[0] });
+
+        statusDiv.innerText = "Zap Out Successful! Received USDC.";
+        updateStats();
+    } catch (e) { statusDiv.innerText = "Zap Out Failed: " + e.message; }
 }
 
 async function setMaxLP() {

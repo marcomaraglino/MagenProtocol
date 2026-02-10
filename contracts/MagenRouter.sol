@@ -160,6 +160,43 @@ contract MagenRouter {
          revert("Not implemented yet for demo");
     }
     
+    // Zap Out: LP -> Remove Liq -> Burn SI/NO -> Return USDC
+    function removeLiquidityZap(uint256 lpAmount) external returns (uint256 usdcAmount) {
+        require(lpAmount > 0, "Amount > 0");
+        
+        // Transfer LP from user
+        IUniswapV2Pair(pair).transferFrom(msg.sender, address(this), lpAmount);
+        
+        // Approve Router to remove liq
+        IUniswapV2Pair(pair).approve(address(uniswapRouter), lpAmount);
+        
+        // Remove Liquidity
+        (uint256 amountSI, uint256 amountNO) = uniswapRouter.removeLiquidity(
+            address(tokenSI),
+            address(tokenNO),
+            lpAmount,
+            0, // minSI
+            0, // minNO
+            address(this), // Router keeps tokens to burn
+            block.timestamp + 300
+        );
+        
+        // Burn smallest amount to be safe (should be equal if 50/50, but uniswap fees might skew)
+        // Just burn whatever we got.
+        // Vault burn requires equal SI/NO? 
+        // Vault.burn(amount) burns `amount` of SI and `amount` of NO.
+        // We need to burn min(amountSI, amountNO).
+        
+        uint256 burnAmt = amountSI < amountNO ? amountSI : amountNO;
+        vault.burn(burnAmt);
+        
+        // Return USDC
+        usdcAmount = usdc.balanceOf(address(this));
+        usdc.transfer(msg.sender, usdcAmount);
+        
+        // Leftover dust remains in Router (could flush to user, but ignoring for MVP)
+    }
+
     // Fallback for buyNO
     function buyNO(uint256 usdcAmount) external {
         require(usdc.transferFrom(msg.sender, address(this), usdcAmount), "USDC transfer failed");

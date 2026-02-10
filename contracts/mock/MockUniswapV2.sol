@@ -104,6 +104,29 @@ contract MockUniswapV2Router02 {
         amountB = amountBDesired;
     }
 
+    function removeLiquidity(
+        address tokenA,
+        address tokenB,
+        uint liquidity,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountA, uint amountB) {
+        address pair = MockUniswapV2Factory(factory).getPair(tokenA, tokenB);
+        require(pair != address(0), "Pair not found");
+        
+        // Transfer LP from user to Pair
+        // The Pair.burn expects LP tokens to be in the Pair contract itself
+        IUniswapV2Pair(pair).transferFrom(msg.sender, pair, liquidity);
+        
+        // Burn
+        (amountA, amountB) = IUniswapV2Pair(pair).burn(to);
+        
+        require(amountA >= amountAMin, "Insufficient A Amount");
+        require(amountB >= amountBMin, "Insufficient B Amount");
+    }
+
     function swapExactTokensForTokens(
         uint amountIn,
         uint,

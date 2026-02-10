@@ -6,7 +6,9 @@ interface IUniswapV2Factory {
     function getPair(address tokenA, address tokenB) external view returns (address pair);
 }
 
-interface IUniswapV2Pair {
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+interface IUniswapV2Pair is IERC20 {
     function token0() external view returns (address);
     function token1() external view returns (address);
     function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
@@ -29,6 +31,16 @@ interface IUniswapV2Router02 {
         address to,
         uint deadline
     ) external returns (uint amountA, uint amountB, uint liquidity);
+
+    function removeLiquidity(
+        address tokenA,
+        address tokenB,
+        uint liquidity,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountA, uint amountB);
 
     function swapExactTokensForTokens(
         uint amountIn,
