@@ -443,33 +443,52 @@ async function executeTrade() {
     }
 
     const weiAmt = web3.utils.toWei(amt, 'ether');
+
+    // Validate User Balances Before Sending Transcations
+    if (currentTradeAction === 'buy') {
+        const usdcBal = await mockUSDC.methods.balanceOf(accounts[0]).call();
+        if (web3.utils.toBN(weiAmt).gt(web3.utils.toBN(usdcBal))) {
+            updateStatus("Insufficient USDC Balance!", "error");
+            return;
+        }
+    } else {
+        const token = currentMode === 'coverage' ? outcomeSI : outcomeNO;
+        const bal = await token.methods.balanceOf(accounts[0]).call();
+        if (web3.utils.toBN(weiAmt).gt(web3.utils.toBN(bal))) {
+            updateStatus("Insufficient Token Balance!", "error");
+            return;
+        }
+    }
+
     updateStatus("Processing...");
 
     try {
+        const txOpts = { from: accounts[0], gas: 3000000 };
+
         if (currentTradeAction === 'buy') {
-            await mockUSDC.methods.approve(magenRouter.options.address, weiAmt).send({ from: accounts[0] });
+            await mockUSDC.methods.approve(magenRouter.options.address, weiAmt).send(txOpts);
 
             if (currentMode === 'coverage') {
                 updateStatus("Buying Coverage (CT)...");
-                await magenRouter.methods.buySI(weiAmt).send({ from: accounts[0] });
+                await magenRouter.methods.buySI(weiAmt).send(txOpts);
                 updateStatus("Coverage Purchased!", "success");
             } else if (currentMode === 'underwrite') {
                 updateStatus("Underwriting (Buying UT)...");
-                await magenRouter.methods.buyNO(weiAmt).send({ from: accounts[0] });
+                await magenRouter.methods.buyNO(weiAmt).send(txOpts);
                 updateStatus("Underwritten Successfully!", "success");
             }
         } else {
             if (currentMode === 'coverage') {
                 updateStatus("Approving CT...");
-                await outcomeSI.methods.approve(magenRouter.options.address, weiAmt).send({ from: accounts[0] });
+                await outcomeSI.methods.approve(magenRouter.options.address, weiAmt).send(txOpts);
                 updateStatus("Selling CT...");
-                await magenRouter.methods.sellSI(weiAmt).send({ from: accounts[0] });
+                await magenRouter.methods.sellSI(weiAmt).send(txOpts);
                 updateStatus("Sold CT for USDC!", "success");
             } else if (currentMode === 'underwrite') {
                 updateStatus("Approving UT...");
-                await outcomeNO.methods.approve(magenRouter.options.address, weiAmt).send({ from: accounts[0] });
+                await outcomeNO.methods.approve(magenRouter.options.address, weiAmt).send(txOpts);
                 updateStatus("Selling UT...");
-                await magenRouter.methods.sellNO(weiAmt).send({ from: accounts[0] });
+                await magenRouter.methods.sellNO(weiAmt).send(txOpts);
                 updateStatus("Sold UT for USDC!", "success");
             }
         }
