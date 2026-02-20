@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Magen - Decentralized Coverage</title>
+    <link rel="icon" type="image/png" href="trademark-white.png">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -17,8 +18,8 @@
         </div>
         <div class="nav-links">
             <a href="#" onclick="showView('viewCreate')" class="nav-link">Create Insurance Pool</a>
-            <a href="#" onclick="showView('viewMarkets')" class="nav-link">Your Positions</a>
-            <a href="#" onclick="showView('viewMarkets')" class="nav-link">Manage Insurance Pools</a>
+            <a href="#" onclick="showView('viewMarkets')" class="nav-link">Insurance Pools</a>
+            <a href="#" onclick="showView('viewManage')" class="nav-link">Manage Insurance Pools</a>
         </div>
         <button id="connectWalletBtn" class="btn-secondary" style="width: auto; padding: 10px 20px; font-size: 0.9rem;"
             onclick="init()">Connect Wallet</button>
@@ -28,11 +29,11 @@
 
         <!-- View: Market List -->
         <div id="viewMarkets">
-            <h1 style="text-align: center;">Available Markets</h1>
+            <h1 style="text-align: center;">Insurance Pools</h1>
             <div id="marketsList" class="grid-layout" style="grid-template-columns: 1fr;">
                 <!-- Market Cards will be injected here -->
                 <div class="glass-card" style="text-align: center; padding: 40px;">
-                    Loading Markets...
+                    Connect to see available Insurance Pools
                 </div>
             </div>
         </div>
@@ -43,12 +44,6 @@
             <div class="glass-card" style="max-width: 600px; margin: 0 auto;">
                 <div class="input-group">
                     <input type="text" id="newPoolName" placeholder="Project Name (e.g. Aave V3)">
-                </div>
-                <div class="input-group">
-                    <input type="text" id="newPoolSymbolSI" placeholder="Symbol SI (e.g. avSI)">
-                </div>
-                <div class="input-group">
-                    <input type="text" id="newPoolSymbolNO" placeholder="Symbol NO (e.g. avNO)">
                 </div>
 
                 <h3 style="font-size: 1rem; color: var(--text-muted); margin: 20px 0 10px;">Initialization Parameters
@@ -106,26 +101,19 @@
                                 <div class="pool-stat-value">N/A</div>
                             </div>
                         </div>
-                        <div class="pool-info"
-                            style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
-                            <div style="width: 100%;">
-                                <div class="pool-stat-label">Pool Composition</div>
-                                <div class="pool-stat-value" id="poolComp"
-                                    style="font-size: 0.9rem; color: var(--accent);">Loading...</div>
-                            </div>
-                        </div>
+                        <button class="action-btn"
+                            style="width: 100%; border-color: rgba(34, 197, 94, 0.3); color: var(--success); font-weight: 500; font-size: 0.85rem;"
+                            onclick="faucetUSDC()">
+                            Get 1,000,000 USDC Faucet
+                        </button>
                     </div>
 
                     <div class="glass-card" style="margin-top: 30px;">
                         <div class="chart-title">Token Info & Balances ></div>
-                        <div id="tokenInfoContent" class="pool-info" style="font-size: 0.85rem; line-height: 1.6;">
+                        <div id="tokenInfoContent" class="pool-info"
+                            style="font-size: 0.85rem; line-height: 1.6; display: block; text-align: left;">
                             Loading...
                         </div>
-                        <button class="action-btn btn-secondary"
-                            style="margin-top: 15px; background: rgba(56, 189, 248, 0.2); font-size: 0.8rem;"
-                            onclick="faucetUSDC()">
-                            Get 1,000 USDC Faucet
-                        </button>
                     </div>
 
                     <div class="glass-card" style="margin-top: 30px; padding: 20px;">
@@ -150,36 +138,51 @@
                                     Trade Coverage Tokens (CT) to manage your exposure.
                                 </p>
 
-                                <!-- Input Area -->
-                                <div class="input-group">
-                                    <input type="number" id="inputAmount" placeholder="0.0">
-                                    <span class="input-unit">USDC</span>
-                                </div>
-
                                 <!-- Trade Stats -->
-                                <div class="trade-stats">
+                                <div class="trade-stats" style="margin-bottom: 10px;">
                                     <div>
-                                        <span class="stat-value" id="estTokens">0 CT</span>
-                                        <br>Estimated Output
-                                    </div>
-                                    <div style="text-align: right;">
                                         <span class="stat-value" id="currentPremium">Loading...</span>
                                         <br>Price / APY
                                     </div>
-                                </div>
-                                <div class="trade-stats">
-                                    <div>
+                                    <div style="text-align: right;">
                                         <span class="stat-value">16 Feb 2027</span>
                                         <br>IP Expiration Date
                                     </div>
                                 </div>
 
-                                <!-- Action Buttons -->
-                                <div style="display: flex; gap: 10px;">
-                                    <button id="actionBtnMain" class="action-btn btn-primary"
-                                        onclick="handleMainAction()">Buy Coverage</button>
-                                    <button id="actionBtnSec" class="action-btn btn-secondary"
-                                        onclick="handleSecondaryAction()">Sell Coverage</button>
+                                <!-- Action Selection -->
+                                <div id="tradeActionSelection" style="display: flex; gap: 10px; margin-top: 20px;">
+                                    <button class="action-btn btn-primary" onclick="showTradeForm('buy')">Buy</button>
+                                    <button class="action-btn btn-secondary"
+                                        onclick="showTradeForm('sell')">Sell</button>
+                                </div>
+
+                                <!-- Trade Form -->
+                                <div id="tradeFormContainer"
+                                    style="display: none; margin-top: 20px; background: rgba(2, 26, 43, 0.05); padding: 15px; border-radius: 12px;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <span id="tradeFormTitle" style="font-weight: 500;">Buy</span>
+                                        <button onclick="setMaxTrade()" class="link-btn active"
+                                            style="font-size: 0.8rem;">MAX</button>
+                                    </div>
+                                    <div class="input-group" style="margin-bottom: 10px;">
+                                        <input type="number" id="inputAmount" placeholder="0.0">
+                                        <span class="input-unit" id="tradeInputUnit">USDC</span>
+                                    </div>
+                                    <div class="trade-stats"
+                                        style="margin-bottom: 15px; justify-content: flex-start; gap: 10px;">
+                                        <div>
+                                            <span class="stat-value" id="estTokens">0</span>
+                                            <span style="font-size: 0.8rem;"> Estimated Output</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button class="action-btn btn-secondary" style="flex: 1;"
+                                            onclick="hideTradeForm()">Cancel</button>
+                                        <button id="executeTradeBtn" class="action-btn btn-primary" style="flex: 2;"
+                                            onclick="executeTrade()">Confirm</button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -238,37 +241,57 @@
                         </div>
                     </div>
 
-                    <!-- Admin Panel (Hidden by default, can toggle for demo) -->
-                    <div class="glass-card" style="margin-top: 20px; border-color: rgba(239, 68, 68, 0.3);">
-                        <h3 style="font-size: 1rem; color: var(--danger); margin-bottom: 15px;">Admin Zone</h3>
-                        <input type="number" id="resolveScale" placeholder="Hack Scale %"
-                            style="background: rgba(255,255,255,0.05); border: none; padding: 10px; color: white; width: 100%; border-radius: 6px; margin-bottom: 10px;">
-                        <button class="action-btn btn-secondary" style="background: rgba(239, 68, 68, 0.2);"
-                            onclick="resolveMarket()">Resolve Market</button>
-                        <div style="display: flex; gap: 10px; margin-top: 10px;">
-                            <button class="action-btn btn-secondary"
-                                style="background: rgba(34, 197, 94, 0.2); font-size: 0.8rem; padding: 10px;"
-                                onclick="claimSI()">Claim SI</button>
-                            <button class="action-btn btn-secondary"
-                                style="background: rgba(34, 197, 94, 0.2); font-size: 0.8rem; padding: 10px;"
-                                onclick="claimNO()">Claim NO</button>
-                        </div>
-
-                        <h3 style="font-size: 1rem; color: var(--text-muted); margin: 15px 0 10px;">Initialization</h3>
-                        <input type="number" id="initAmount" placeholder="Init USDC Amount"
-                            style="background: rgba(255,255,255,0.05); border: none; padding: 10px; color: white; width: 100%; border-radius: 6px; margin-bottom: 5px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between;">
-                            <label for="initRisk" style="color: var(--text-muted); font-size: 0.9rem;">Risk %</label>
-                            <span id="initRiskDisplay" style="color: var(--primary); font-weight: bold;">5%</span>
-                        </div>
-                        <input type="range" id="initRisk" min="0" max="99" value="5"
-                            style="width: 100%; margin-bottom: 10px;">
-                        <button class="action-btn btn-secondary" onclick="initPool()">Initialize Pool</button>
-                    </div>
-
                 </div>
+
             </div>
         </div>
+    </div>
+
+    <!-- View: Manage Pools (Admin) -->
+    <div id="viewManage" style="display: none;">
+        <h1 style="text-align: center;">Manage Insurance Pools</h1>
+        <div id="adminMarketsList" class="grid-layout" style="grid-template-columns: 1fr;">
+            <!-- Admin Market Cards will be injected here -->
+            <div class="glass-card" style="text-align: center; padding: 40px;">
+                Connect to see available Insurance Pools
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Zone Modal -->
+    <div id="adminModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 26, 43, 0.8); backdrop-filter: blur(5px); z-index: 999; justify-content: center; align-items: center;">
+        <div class="glass-card"
+            style="width: 90%; max-width: 500px; border-color: rgba(239, 68, 68, 0.3); position: relative;">
+            <button onclick="closeAdminModal()"
+                style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">&times;</button>
+            <h2 id="adminModalTitle" style="text-align: center; margin-bottom: 20px;">Admin Zone</h2>
+
+            <h3 style="font-size: 1rem; color: var(--danger); margin-bottom: 15px;">Resolution</h3>
+            <input type="number" id="resolveScale" placeholder="Hack Scale %"
+                style="background: rgba(2, 26, 43, 0.05); border: 1px solid rgba(2, 26, 43, 0.1); padding: 10px; color: var(--text-main); width: 100%; border-radius: 6px; margin-bottom: 10px; font-family: 'Outfit';">
+            <button class="action-btn btn-secondary" style="background: rgba(239, 68, 68, 0.2);"
+                onclick="resolveMarket()">Resolve Market</button>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="action-btn btn-secondary"
+                    style="background: rgba(34, 197, 94, 0.2); font-size: 0.8rem; padding: 10px;"
+                    onclick="claimSI()">Claim CT</button>
+                <button class="action-btn btn-secondary"
+                    style="background: rgba(34, 197, 94, 0.2); font-size: 0.8rem; padding: 10px;"
+                    onclick="claimNO()">Claim UT</button>
+            </div>
+
+            <h3 style="font-size: 1rem; color: var(--text-muted); margin: 25px 0 10px;">Initialization</h3>
+            <input type="number" id="initAmount" placeholder="Init USDC Amount"
+                style="background: rgba(2, 26, 43, 0.05); border: 1px solid rgba(2, 26, 43, 0.1); padding: 10px; color: var(--text-main); width: 100%; border-radius: 6px; margin-bottom: 5px; font-family: 'Outfit';">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <label for="initRisk" style="color: var(--text-muted); font-size: 0.9rem;">Risk %</label>
+                <span id="initRiskDisplay" style="color: var(--primary); font-weight: bold;">5%</span>
+            </div>
+            <input type="range" id="initRisk" min="0" max="99" value="5" style="width: 100%; margin-bottom: 10px;">
+            <button class="action-btn btn-secondary" onclick="initPool()">Initialize Pool</button>
+        </div>
+    </div>
 
     </div>
 

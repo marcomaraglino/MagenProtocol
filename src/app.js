@@ -11,15 +11,45 @@ let priceChart;
 // Current Mode: 'coverage' | 'underwrite' | 'liquidity'
 let currentMode = 'coverage';
 let currentLiqMode = 'mint'; // 'mint' | 'add' | 'remove'
+let currentTradeAction = 'buy'; // 'buy' | 'sell'
 
 // ==========================================
-// View System
+// Toast Notifications
 // ==========================================
+function showToast(message, type = 'success') {
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = message;
+    container.appendChild(toast);
+
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // Auto remove
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+function updateStatus(msg, type = 'success') {
+    if (statusDiv) statusDiv.innerText = msg;
+    showToast(msg, type);
+}
+
 
 function showView(viewId) {
     document.getElementById('viewMarkets').style.display = 'none';
     document.getElementById('viewCreate').style.display = 'none';
     document.getElementById('viewDashboard').style.display = 'none';
+    document.getElementById('viewManage').style.display = 'none';
 
     document.getElementById(viewId).style.display = 'block';
 
@@ -46,8 +76,7 @@ async function loadArtifact(name, address = null) {
         let deployedNetwork = data.networks[netId];
 
         if (!deployedNetwork) {
-            alert(`Contract not found on network ID: ${netId}. Please switch MetaMask to Sepolia (11155111) or your local Ganache.`);
-            statusDiv.innerText = `Incorrect Network (ID: ${netId})`;
+            updateStatus(`Contract not found on network ID: ${netId}.`, 'error');
             return null;
         }
         return new web3.eth.Contract(data.abi, deployedNetwork.address);
@@ -70,14 +99,14 @@ async function init() {
                 btn.classList.add('connected');
             }
 
-            statusDiv.innerText = "Connected";
+            updateStatus("Connected", "success");
 
             // Load USDC & Factory
             mockUSDC = await loadArtifact("MockUSDC");
             poolFactory = await loadArtifact("PoolFactory");
 
             if (!poolFactory) {
-                statusDiv.innerText = "Factory not found. Check network.";
+                updateStatus("Factory not found. Check network.", "error");
                 return;
             }
 
@@ -109,10 +138,10 @@ async function init() {
 
         } catch (error) {
             console.error(error);
-            statusDiv.innerText = "Connection Failed";
+            updateStatus("Connection Failed", "error");
         }
     } else {
-        statusDiv.innerText = "Please install MetaMask!";
+        updateStatus("Please install MetaMask!", "error");
     }
 }
 
@@ -125,12 +154,18 @@ async function loadMarkets() {
     const list = document.getElementById('marketsList');
     list.innerHTML = 'Loading...';
 
+    // Also populate Admin Markets
+    const adminList = document.getElementById('adminMarketsList');
+    if (adminList) adminList.innerHTML = 'Loading...';
+
     try {
         const count = await poolFactory.methods.getPoolsLength().call();
         list.innerHTML = '';
+        if (adminList) adminList.innerHTML = '';
 
         if (count == 0) {
-            list.innerHTML = '<div class="glass-card" style="text-align:center;">No pools found. Create one!</div>';
+            list.innerHTML = '<div class="glass-card" style="text-align:center; padding: 40px;">Connect to see available Insurance Pools</div>';
+            if (adminList) adminList.innerHTML = '<div class="glass-card" style="text-align:center; padding: 40px;">No pools available to manage</div>';
             return;
         }
 
@@ -143,7 +178,7 @@ async function loadMarkets() {
             card.style.display = 'flex';
             card.style.justifyContent = 'space-between';
             card.style.alignItems = 'center';
-            card.style.marginBottom = '20px'; // Add spacing
+            card.style.marginBottom = '20px';
 
             card.innerHTML = `
                 <div>
@@ -156,26 +191,48 @@ async function loadMarkets() {
                 </button>
             `;
             list.appendChild(card);
+
+            if (adminList) {
+                const adminCard = document.createElement('div');
+                adminCard.className = 'glass-card';
+                adminCard.style.display = 'flex';
+                adminCard.style.justifyContent = 'space-between';
+                adminCard.style.alignItems = 'center';
+                adminCard.style.marginBottom = '20px';
+
+                adminCard.innerHTML = `
+                    <div>
+                        <h3 style="margin: 0 0 5px 0;">${pool.name}</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9em; margin: 0;">Status: Active</p>
+                    </div>
+                    <button class="action-btn btn-secondary" style="width: auto; padding: 8px 16px; border-color: var(--danger); color: var(--danger)" 
+                        onclick="openAdminModal('${pool.router}', '${pool.vault}', '${pool.name}')">
+                        Admin Zone
+                    </button>
+                `;
+                adminList.appendChild(adminCard);
+            }
         }
     } catch (e) {
         console.error("Error loading markets:", e);
         list.innerHTML = `<div class="glass-card" style="color: var(--danger); text-align: center;">
             Error loading markets: <br> ${e.message}
         </div>`;
+        if (adminList) {
+            adminList.innerHTML = list.innerHTML;
+        }
     }
 }
 
 async function createPool() {
     const name = document.getElementById('newPoolName').value;
-    const symSI = document.getElementById('newPoolSymbolSI').value;
-    const symNO = document.getElementById('newPoolSymbolNO').value;
+    const symSI = "CT";
+    const symNO = "UT";
     const risk = document.getElementById('newPoolRisk').value;
     const liquidity = document.getElementById('newPoolLiquidity').value;
 
-    const status = document.getElementById('createStatus');
-
-    if (!name || !symSI || !symNO || !risk || !liquidity) {
-        status.innerText = "Please fill all fields";
+    if (!name || !risk || !liquidity) {
+        updateStatus("Please fill all fields", "error");
         return;
     }
 
@@ -184,41 +241,34 @@ async function createPool() {
         const riskBN = web3.utils.toBN(risk);
 
         // 1. Create Pool
-        status.innerText = "1/3 Deploying Pool Contracts... (Please Confirm)";
+        updateStatus("1/3 Deploying Pool Contracts... (Please Confirm)");
         const receipt = await poolFactory.methods.createPool(name, symSI, symNO).send({ from: accounts[0] });
 
-        // Find new pool address from events
         let event = receipt.events.PoolCreated;
-        if (Array.isArray(event)) {
-            event = event[event.length - 1]; // Take the last one if multiple
-        }
+        if (Array.isArray(event)) event = event[event.length - 1];
 
         const routerAddr = event.returnValues.router;
 
-        status.innerText = `Pool Deployed at ${routerAddr.substring(0, 6)}...`;
+        updateStatus(`Pool Deployed at ${routerAddr.substring(0, 6)}...`);
 
         // 2. Approve USDC
-        status.innerText = "2/3 Approving USDC... (Please Confirm)";
+        updateStatus("2/3 Approving USDC... (Please Confirm)");
         await mockUSDC.methods.approve(routerAddr, weiLiquidity).send({ from: accounts[0] });
 
         // 3. Initialize
-        status.innerText = "3/3 Initializing Pool... (Please Confirm)";
+        updateStatus("3/3 Initializing Pool... (Please Confirm)");
         const newRouter = await loadArtifact("MagenRouter", routerAddr);
-        // Add listeners for debugging
-        await newRouter.methods.initialize(weiLiquidity, riskBN).send({ from: accounts[0] })
-            .on('transactionHash', Hash => console.log("Init Hash:", Hash));
+        await newRouter.methods.initialize(weiLiquidity, riskBN).send({ from: accounts[0] });
 
-        status.innerText = "Success! Pool Ready.";
-        alert("Pool Created and Initialized Successfully!");
+        updateStatus("Pool Created and Initialized Successfully!");
 
-        // Clear inputs
         document.getElementById('newPoolName').value = '';
         document.getElementById('newPoolLiquidity').value = '';
 
         showView('viewMarkets');
     } catch (e) {
         console.error("Create Pool Failed:", e);
-        status.innerText = "Failed: " + (e.message || e);
+        updateStatus("Failed: " + (e.message || e), "error");
     }
 }
 
@@ -254,43 +304,72 @@ async function openPool(routerAddr, vaultAddr, pairAddr, name) {
 // ==========================================
 
 function switchTab(mode) {
-    console.log("Switching tab to:", mode);
     currentMode = mode;
+    hideTradeForm();
 
-    // Update Buttons
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector(`.tab-btn[onclick="switchTab('${mode}')"]`).classList.add('active');
 
-    // Toggle UI Sections
     if (mode === 'liquidity') {
         document.getElementById('tradeUI').style.display = 'none';
         document.getElementById('liquidityUI').style.display = 'block';
-        setLiqMode('add'); // Default
+        setLiqMode('add');
     } else {
         document.getElementById('tradeUI').style.display = 'block';
         document.getElementById('liquidityUI').style.display = 'none';
 
-        // Setup Trade Inputs
-        const mainBtn = document.getElementById('actionBtnMain');
-        const secBtn = document.getElementById('actionBtnSec');
-        const inputVal = document.getElementById('inputAmount');
-        inputVal.value = '';
-        document.getElementById('estTokens').innerText = '0';
-
         if (mode === 'coverage') {
-            mainBtn.innerText = "Buy Coverage";
-            secBtn.innerText = "Sell Coverage";
-            inputVal.placeholder = "USDC Amount (Buy) / SI Amount (Sell)";
             document.querySelector('#tradeDesc').innerText = "Trade Coverage Tokens (CT) to manage your exposure.";
+            document.getElementById('currentPremium').nextElementSibling.innerText = "Premium Price";
         } else {
-            mainBtn.innerText = "Buy Yield (NO)";
-            secBtn.innerText = "Sell Yield";
-            inputVal.placeholder = "USDC Amount (Buy) / NO Amount (Sell)";
-            document.querySelector('#tradeDesc').innerText = "Buy No Tokens (NO) to earn yield from premiums.";
+            document.querySelector('#tradeDesc').innerText = "Buy Yield Tokens (UT) to earn yield from premiums.";
+            document.getElementById('currentPremium').nextElementSibling.innerText = "Implied APY";
         }
     }
     updateStats();
 }
+
+function showTradeForm(action) {
+    currentTradeAction = action;
+    document.getElementById('tradeActionSelection').style.display = 'none';
+    document.getElementById('tradeFormContainer').style.display = 'block';
+
+    document.getElementById('inputAmount').value = '';
+    document.getElementById('estTokens').innerText = '0';
+    document.getElementById('tradeFormTitle').innerText = action === 'buy' ? 'Buy' : 'Sell';
+
+    const tokenName = currentMode === 'coverage' ? 'CT' : 'UT';
+
+    if (action === 'buy') {
+        document.getElementById('tradeInputUnit').innerText = 'USDC';
+    } else {
+        document.getElementById('tradeInputUnit').innerText = tokenName;
+    }
+}
+
+function hideTradeForm() {
+    document.getElementById('tradeActionSelection').style.display = 'flex';
+    document.getElementById('tradeFormContainer').style.display = 'none';
+    document.getElementById('inputAmount').value = '';
+}
+
+async function setMaxTrade() {
+    if (!accounts) return;
+    const input = document.getElementById('inputAmount');
+
+    if (currentTradeAction === 'buy') {
+        const usdcBal = await mockUSDC.methods.balanceOf(accounts[0]).call();
+        input.value = parseFloat(web3.utils.fromWei(usdcBal, 'ether')).toFixed(4);
+    } else {
+        const token = currentMode === 'coverage' ? outcomeSI : outcomeNO;
+        const bal = await token.methods.balanceOf(accounts[0]).call();
+        input.value = parseFloat(web3.utils.fromWei(bal, 'ether')).toFixed(4);
+    }
+    updateStats(); // to trigger estimation
+}
+
+// Bind input event to estimation update
+document.getElementById('inputAmount').addEventListener('input', updateStats);
 
 function setLiqMode(mode) {
     currentLiqMode = mode;
@@ -351,75 +430,55 @@ function initChart() {
 // Interaction Logic
 // ==========================================
 
-async function handleMainAction() {
+async function executeTrade() {
     if (!accounts) {
-        statusDiv.innerText = "Please Connect Wallet First";
+        updateStatus("Please Connect Wallet First", "error");
         return;
     }
 
     const amt = document.getElementById('inputAmount').value;
     if (!amt || parseFloat(amt) <= 0) {
-        statusDiv.innerText = "Please enter a valid amount";
+        updateStatus("Please enter a valid amount", "error");
         return;
     }
 
     const weiAmt = web3.utils.toWei(amt, 'ether');
-    statusDiv.innerText = "Processing...";
+    updateStatus("Processing...");
 
     try {
-        // Buy SI or Buy NO
-        await mockUSDC.methods.approve(magenRouter.options.address, weiAmt).send({ from: accounts[0] });
+        if (currentTradeAction === 'buy') {
+            await mockUSDC.methods.approve(magenRouter.options.address, weiAmt).send({ from: accounts[0] });
 
-        if (currentMode === 'coverage') {
-            statusDiv.innerText = "Buying Coverage (SI)...";
-            await magenRouter.methods.buySI(weiAmt).send({ from: accounts[0] });
-            statusDiv.innerText = "Coverage Purchased!";
-        } else if (currentMode === 'underwrite') {
-            statusDiv.innerText = "Underwriting (Buying NO)...";
-            await magenRouter.methods.buyNO(weiAmt).send({ from: accounts[0] });
-            statusDiv.innerText = "Underwritten Successful!";
+            if (currentMode === 'coverage') {
+                updateStatus("Buying Coverage (CT)...");
+                await magenRouter.methods.buySI(weiAmt).send({ from: accounts[0] });
+                updateStatus("Coverage Purchased!", "success");
+            } else if (currentMode === 'underwrite') {
+                updateStatus("Underwriting (Buying UT)...");
+                await magenRouter.methods.buyNO(weiAmt).send({ from: accounts[0] });
+                updateStatus("Underwritten Successfully!", "success");
+            }
+        } else {
+            if (currentMode === 'coverage') {
+                updateStatus("Approving CT...");
+                await outcomeSI.methods.approve(magenRouter.options.address, weiAmt).send({ from: accounts[0] });
+                updateStatus("Selling CT...");
+                await magenRouter.methods.sellSI(weiAmt).send({ from: accounts[0] });
+                updateStatus("Sold CT for USDC!", "success");
+            } else if (currentMode === 'underwrite') {
+                updateStatus("Approving UT...");
+                await outcomeNO.methods.approve(magenRouter.options.address, weiAmt).send({ from: accounts[0] });
+                updateStatus("Selling UT...");
+                await magenRouter.methods.sellNO(weiAmt).send({ from: accounts[0] });
+                updateStatus("Sold UT for USDC!", "success");
+            }
         }
+
+        hideTradeForm();
         updateStats();
     } catch (e) {
         console.error(e);
-        statusDiv.innerText = "Transaction Failed: " + (e.message || e);
-    }
-}
-
-async function handleSecondaryAction() {
-    if (!accounts) {
-        statusDiv.innerText = "Please Connect Wallet First";
-        return;
-    }
-    const amt = document.getElementById('inputAmount').value;
-    if (!amt || parseFloat(amt) <= 0) {
-        statusDiv.innerText = "Please enter a valid amount";
-        return;
-    }
-
-    statusDiv.innerText = "Selling...";
-    const weiAmt = web3.utils.toWei(amt, 'ether');
-
-    try {
-        if (currentMode === 'coverage') {
-            // Sell SI
-            statusDiv.innerText = "Approving SI...";
-            await outcomeSI.methods.approve(magenRouter.options.address, weiAmt).send({ from: accounts[0] });
-            statusDiv.innerText = "Selling SI...";
-            await magenRouter.methods.sellSI(weiAmt).send({ from: accounts[0] });
-            statusDiv.innerText = "Sold SI for USDC!";
-        } else if (currentMode === 'underwrite') {
-            // Sell NO
-            statusDiv.innerText = "Approving NO...";
-            await outcomeNO.methods.approve(magenRouter.options.address, weiAmt).send({ from: accounts[0] });
-            statusDiv.innerText = "Selling NO...";
-            await magenRouter.methods.sellNO(weiAmt).send({ from: accounts[0] });
-            statusDiv.innerText = "Sold NO for USDC!";
-        }
-        updateStats();
-    } catch (e) {
-        console.error(e);
-        statusDiv.innerText = "Sell Failed: " + (e.message || e);
+        updateStatus("Transaction Failed: " + (e.message || e), "error");
     }
 }
 
@@ -428,20 +487,20 @@ async function handleSecondaryAction() {
 async function handleLiqAddZap() {
     const amt = document.getElementById('addLiquidityUSDC').value;
     if (!amt) return;
-    statusDiv.innerText = "Adding Liquidity...";
+    updateStatus("Adding Liquidity...");
     try {
         const wei = web3.utils.toWei(amt, 'ether');
         // 1. Approve USDC to Router
-        statusDiv.innerText = "Approving USDC...";
+        updateStatus("Approving USDC...");
         await mockUSDC.methods.approve(magenRouter.options.address, wei).send({ from: accounts[0] });
 
         // 2. Add Liquidity (Smart)
-        statusDiv.innerText = "Adding Liquidity...";
+        updateStatus("Adding Liquidity...");
         await magenRouter.methods.addLiquidity(wei).send({ from: accounts[0] });
 
-        statusDiv.innerText = "Liquidity Added!";
+        updateStatus("Liquidity Added!", "success");
         updateStats();
-    } catch (e) { statusDiv.innerText = "Add Liq Failed: " + e.message; }
+    } catch (e) { updateStatus("Add Liq Failed: " + e.message, "error"); }
 }
 
 
@@ -449,7 +508,7 @@ async function handleLiqRemove() {
     const lp = document.getElementById('removeLP').value;
     if (!lp) return;
 
-    statusDiv.innerText = "Removing Liquidity...";
+    updateStatus("Removing Liquidity...");
     try {
         const weiLP = web3.utils.toWei(lp, 'ether');
 
@@ -464,10 +523,10 @@ async function handleLiqRemove() {
         const uniRouter = await loadArtifact("IUniswapV2Router02", routerAddr);
 
         // Approve Router to spend LP
-        statusDiv.innerText = "Approving LP...";
+        updateStatus("Approving LP...");
         await uniswapPair.methods.approve(routerAddr, weiLP).send({ from: accounts[0] });
 
-        statusDiv.innerText = "Removing Liquidity (Uniswap)...";
+        updateStatus("Removing Liquidity (Uniswap)...");
 
         // Remove Liquidity
         // min amounts 0 for MVP
@@ -482,9 +541,9 @@ async function handleLiqRemove() {
             deadline
         ).send({ from: accounts[0] });
 
-        statusDiv.innerText = "Liquidity Removed! (Received SI + NO)";
+        updateStatus("Liquidity Removed!", "success");
         updateStats();
-    } catch (e) { statusDiv.innerText = "Remove LP Failed: " + e.message; }
+    } catch (e) { updateStatus("Remove LP Failed: " + e.message, "error"); }
 }
 
 
@@ -521,9 +580,6 @@ async function updateStats() {
 
         const elTVL = document.getElementById('statTVL');
         if (elTVL) elTVL.innerText = `$${tvlUSDC.toFixed(2)}`;
-
-        const elComp = document.getElementById('poolComp');
-        if (elComp) elComp.innerText = `${rSI.toFixed(2)} SI / ${rNO.toFixed(2)} NO`;
 
         // Balances
         if (accounts) {
@@ -578,12 +634,22 @@ async function updateStats() {
                 const impliedYield = ((1 - probNO) / probNO) * 100;
 
                 if (currentMode === 'coverage') {
-                    const est = inputVal / probSI;
-                    estEl.innerText = `${est.toFixed(2)} CT`;
+                    if (currentTradeAction === 'buy') {
+                        const est = inputVal / probSI;
+                        estEl.innerText = `${est.toFixed(2)}`;
+                    } else {
+                        const est = inputVal * probSI;
+                        estEl.innerText = `${est.toFixed(2)}`;
+                    }
                     premEl.innerText = `${(probSI * 100).toFixed(2)}%`;
                 } else if (currentMode === 'underwrite') {
-                    const est = inputVal / probNO;
-                    estEl.innerText = `${est.toFixed(2)} NO`;
+                    if (currentTradeAction === 'buy') {
+                        const est = inputVal / probNO;
+                        estEl.innerText = `${est.toFixed(2)}`;
+                    } else {
+                        const est = inputVal * probNO;
+                        estEl.innerText = `${est.toFixed(2)}`;
+                    }
                     premEl.innerText = `${impliedYield.toFixed(2)}% APY`;
                 }
             } else {
@@ -597,63 +663,131 @@ async function updateStats() {
     }
 }
 
+// ==========================================
+// Admin Modal Logic
+// ==========================================
+async function openAdminModal(routerAddr, vaultAddr, name) {
+    document.getElementById('adminModalTitle').innerText = `${name} - Admin Zone`;
+    document.getElementById('adminModal').style.display = 'flex';
+
+    // Load Contracts for specific admin pool in background
+    try {
+        magenRouter = await loadArtifact("MagenRouter", routerAddr);
+        magenVault = await loadArtifact("MagenVault", vaultAddr);
+
+        if (magenVault) {
+            const siAddr = await magenVault.methods.tokenSI().call();
+            const noAddr = await magenVault.methods.tokenNO().call();
+            const siArt = await fetch(`../build/contracts/OutcomeToken.json`).then(r => r.json());
+            outcomeSI = new web3.eth.Contract(siArt.abi, siAddr);
+            outcomeNO = new web3.eth.Contract(siArt.abi, noAddr);
+        }
+    } catch (e) {
+        console.error("Error loading admin contracts", e);
+        updateStatus("Failed to load pool contracts", "error");
+    }
+}
+
+function closeAdminModal() {
+    document.getElementById('adminModal').style.display = 'none';
+
+    // Reset inputs
+    document.getElementById('resolveScale').value = '';
+    document.getElementById('initAmount').value = '';
+    document.getElementById('initRisk').value = '5';
+    document.getElementById('initRiskDisplay').innerText = '5%';
+}
+
 async function initPool() {
     const amt = document.getElementById('initAmount').value;
     const risk = document.getElementById('initRisk').value;
     if (!amt || !risk) return;
 
+    if (!magenRouter) {
+        updateStatus("Error: Pool router not loaded", "error");
+        return;
+    }
+
     const weiAmt = web3.utils.toWei(amt, 'ether');
     const riskBN = web3.utils.toBN(risk);
 
-    statusDiv.innerText = "Approving USDC for Init...";
+    updateStatus("Approving USDC for Init...");
     try {
         await mockUSDC.methods.approve(magenRouter.options.address, weiAmt).send({ from: accounts[0] });
-        statusDiv.innerText = `Initializing Pool with ${risk}% Risk...`;
+        updateStatus(`Initializing Pool with ${risk}% Risk...`);
         await magenRouter.methods.initialize(weiAmt, riskBN).send({ from: accounts[0] });
-        statusDiv.innerText = "Pool Initialized!";
-        updateStats();
+        updateStatus("Pool Initialized!", "success");
+        closeAdminModal();
     } catch (e) {
-        statusDiv.innerText = "Init failed: " + e.message;
+        updateStatus("Init failed: " + e.message, "error");
     }
 }
 
 async function resolveMarket() {
     const scale = document.getElementById('resolveScale').value;
     if (!scale) return;
+
+    // Check if vault is loaded
+    if (!magenVault) {
+        updateStatus("Error: Pool vault not loaded", "error");
+        return;
+    }
+
     const scaleBN = web3.utils.toBN(scale).mul(web3.utils.toBN(10).pow(web3.utils.toBN(16)));
     try {
         await magenVault.methods.resolve(scaleBN).send({ from: accounts[0] });
-        statusDiv.innerText = "Market Resolved!";
-    } catch (e) { statusDiv.innerText = "Error: " + e.message; }
+        updateStatus("Market Resolved!", "success");
+        closeAdminModal();
+    } catch (e) { updateStatus("Error: " + e.message, "error"); }
 }
 
 async function claimSI() {
+    if (!magenVault || !outcomeSI) {
+        updateStatus("Error: Pool tokens not loaded", "error");
+        return;
+    }
+
     try {
         const bal = await outcomeSI.methods.balanceOf(accounts[0]).call();
-        if (bal > 0) await magenVault.methods.claim(bal, true).send({ from: accounts[0] });
-        statusDiv.innerText = "Claimed All SI";
-    } catch (e) { statusDiv.innerText = "Error: " + e.message; }
+        if (bal > 0) {
+            await magenVault.methods.claim(bal, true).send({ from: accounts[0] });
+            updateStatus("Claimed All CT", "success");
+            closeAdminModal();
+        } else {
+            updateStatus("No CT balance to claim", "error");
+        }
+    } catch (e) { updateStatus("Error: " + e.message, "error"); }
 }
 
 async function claimNO() {
+    if (!magenVault || !outcomeNO) {
+        updateStatus("Error: Pool tokens not loaded", "error");
+        return;
+    }
+
     try {
         const bal = await outcomeNO.methods.balanceOf(accounts[0]).call();
-        if (bal > 0) await magenVault.methods.claim(bal, false).send({ from: accounts[0] });
-        statusDiv.innerText = "Claimed All NO";
-    } catch (e) { statusDiv.innerText = "Error: " + e.message; }
+        if (bal > 0) {
+            await magenVault.methods.claim(bal, false).send({ from: accounts[0] });
+            updateStatus("Claimed All UT", "success");
+            closeAdminModal();
+        } else {
+            updateStatus("No UT balance to claim", "error");
+        }
+    } catch (e) { updateStatus("Error: " + e.message, "error"); }
 }
 
 async function faucetUSDC() {
     if (!mockUSDC || !accounts) return;
     try {
-        const amt = web3.utils.toWei('1000', 'ether');
-        statusDiv.innerText = "Requesting Faucet...";
+        const amt = web3.utils.toWei('1000000', 'ether');
+        updateStatus("Requesting Faucet...");
         await mockUSDC.methods.mint(accounts[0], amt).send({ from: accounts[0] });
-        statusDiv.innerText = "Faucet Success! +1,000 USDC";
+        updateStatus("Faucet Success! +1,000,000 USDC", "success");
         updateStats(); // Refresh balances
     } catch (e) {
         console.error(e);
-        statusDiv.innerText = "Faucet Failed: " + e.message;
+        updateStatus("Faucet Failed: " + e.message, "error");
     }
 }
 
