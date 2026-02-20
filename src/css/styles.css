@@ -24,7 +24,9 @@
 
 body {
     font-family: 'Outfit', sans-serif;
-    background: var(--bg-color);
+    /* Subtle gradient to highlight the glass effect */
+    background: linear-gradient(135deg, #F5FAFF 0%, #E0F2FE 50%, #F5FAFF 100%);
+    background-attachment: fixed;
     color: var(--text-main);
     min-height: 100vh;
     display: flex;
@@ -39,7 +41,12 @@ body {
     align-items: center;
     padding: 20px 40px;
     width: 100%;
-    background: #D9D9D9;
+    /* Liquid Glass Effect */
+    background: rgba(217, 217, 217, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -59,7 +66,6 @@ body {
     object-fit: contain;
     display: block;
     background-color: none;
-    filter: invert(1);
 }
 
 .nav-links {
@@ -89,7 +95,7 @@ body {
 h1 {
     font-size: 2.5rem;
     margin-bottom: 30px;
-    background: linear-gradient(to right, white, var(--text-muted));
+    background: linear-gradient(to right, rgb(0, 0, 0), var(--text-muted));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -106,18 +112,22 @@ h1 {
     }
 }
 
-/* Cards (Glassmorphism) */
+/* Cards (Glassmorphism / Liquid Glass) */
 .glass-card {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
+    background: rgba(217, 217, 217, 0.2);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
     border-radius: 20px;
     padding: 30px;
     color: var(--text-main);
-    transition: transform 0.3s ease, border-color 0.3s;
+    transition: transform 0.3s ease, border-color 0.3s, box-shadow 0.3s;
 }
 
 .glass-card:hover {
-    border-color: rgba(2, 26, 43, 0.2);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.08);
 }
 
 /* Chart Section */
@@ -173,15 +183,18 @@ h1 {
 }
 
 .input-group {
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border-radius: 12px;
     padding: 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    border: 1px solid transparent;
-    transition: border-color 0.3s;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .input-group:focus-within {
@@ -265,6 +278,8 @@ h1 {
 
 .btn-secondary {
     background: rgba(2, 26, 43, 0.05);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     color: var(--text-main);
     box-shadow: none;
     border: 1px solid rgba(2, 26, 43, 0.1);
@@ -333,7 +348,9 @@ h1 {
 }
 
 .toast {
-    background: #021a2b;
+    background: rgba(2, 26, 43, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     color: #fff;
     padding: 12px 24px;
     border-radius: 8px;
@@ -358,4 +375,67 @@ h1 {
 
 .toast.success {
     border-left-color: var(--success);
+}
+
+/* Custom Range Slider Styling (Consistent Colors) */
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+    input[type='range'] {
+        overflow: hidden;
+        -webkit-appearance: none;
+        appearance: none;
+        background-color: rgba(255, 255, 255, 0.3);
+        /* Subtle glass track */
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 6px;
+        height: 12px;
+        outline: none;
+    }
+
+    input[type='range']::-webkit-slider-runnable-track {
+        height: 12px;
+        -webkit-appearance: none;
+        appearance: none;
+        color: var(--primary);
+        margin-top: -1px;
+        border-radius: 6px;
+    }
+
+    input[type='range']::-webkit-slider-thumb {
+        width: 12px;
+        -webkit-appearance: none;
+        appearance: none;
+        height: 12px;
+        cursor: ew-resize;
+        background: #fff;
+        box-shadow: -1000px 0 0 1000px var(--primary);
+        border-radius: 50%;
+    }
+}
+
+/** FF*/
+input[type="range"]::-moz-range-progress {
+    background-color: var(--primary);
+    border-radius: 6px;
+}
+
+input[type="range"]::-moz-range-track {
+    background-color: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 6px;
+    height: 12px;
+}
+
+/* IE*/
+input[type="range"]::-ms-fill-lower {
+    background-color: var(--primary);
+    border-radius: 6px;
+}
+
+input[type="range"]::-ms-fill-upper {
+    background-color: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 6px;
+    height: 12px;
 }
