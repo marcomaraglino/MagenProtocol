@@ -811,3 +811,43 @@ async function faucetUSDC() {
 }
 
 window.init = init;
+
+// ==========================================
+// Theme Toggling Logic
+// ==========================================
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('magen-theme', newTheme);
+
+    updateThemeUI(newTheme);
+}
+
+function updateThemeUI(theme) {
+    const btn = document.getElementById('themeToggleBtn');
+    const logo = document.getElementById('mainLogo');
+
+    if (theme === 'dark') {
+        if (btn) btn.innerText = '☀️';
+        if (logo) logo.src = 'trademark-white.png';
+    } else {
+        if (btn) btn.innerText = '🌙';
+        if (logo) logo.src = 'trademark-black.png';
+    }
+}
+
+// Initialize theme on load
+(function initTheme() {
+    const savedTheme = localStorage.getItem('magen-theme');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const themeToApply = savedTheme || (prefersDark ? 'dark' : 'light');
+
+    document.documentElement.setAttribute('data-theme', themeToApply);
+
+    // Ensure element updates don't execute before DOM is fully rendered
+    document.addEventListener('DOMContentLoaded', () => {
+        updateThemeUI(themeToApply);
+    });
+})();

@@ -28,10 +28,10 @@
     </div>
     <nav class="navbar">
         <div class="logo">
-            <img src="trademark-black.png" alt="Logo" class="logo-icon">
+            <img src="trademark-black.png" alt="Logo" class="logo-icon" id="mainLogo">
             <div
                 style="display: flex; flex-direction: column; font-size: 0.6rem; color: var(--text-muted); line-height: 1.2; margin-left: 10px; font-weight: 400; letter-spacing: 0.5px;">
-                <span>UI v0.1.5-alpha</span>
+                <span>UI v0.1.6-alpha</span>
                 <span>SC v0.1.0-alpha</span>
             </div>
         </div>
@@ -40,8 +40,13 @@
             <a href="#" onclick="showView('viewMarkets')" class="nav-link">Insurance Pools</a>
             <a href="#" onclick="showView('viewManage')" class="nav-link">Manage Insurance Pools</a>
         </div>
-        <button id="connectWalletBtn" class="btn-secondary" style="width: auto; padding: 10px 20px; font-size: 0.9rem;"
-            onclick="init()">Connect Wallet</button>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Dark Mode">
+                🌙
+            </button>
+            <button id="connectWalletBtn" class="btn-secondary"
+                style="width: auto; padding: 10px 20px; font-size: 0.9rem;" onclick="init()">Connect Wallet</button>
+        </div>
     </nav>
 
     <div class="container">

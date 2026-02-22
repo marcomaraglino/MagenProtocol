@@ -484,3 +484,100 @@ input[type="range"]::-ms-fill-upper {
         display: flex;
     }
 }
+
+/* Dark Theme Overrides */
+[data-theme="dark"] {
+    --bg-color: #0b1120;
+    --card-bg: #1e293b;
+    --card-border: rgba(255, 255, 255, 0.1);
+    /* --primary: #38bdf8; keep vibrant blue */
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] body {
+    background: linear-gradient(135deg, #0b1120 0%, #0f172a 50%, #0b1120 100%);
+}
+
+[data-theme="dark"] h1 {
+    background: linear-gradient(to right, #ffffff, var(--text-muted));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .navbar {
+    background: rgba(11, 17, 32, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .glass-card {
+    background: rgba(30, 41, 59, 0.4);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .glass-card:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .input-group,
+[data-theme="dark"] .mobile-overlay .glass-card {
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-main);
+}
+
+[data-theme="dark"] .btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Hardcoded inline style overrides */
+[data-theme="dark"] #tradeFormContainer,
+[data-theme="dark"] #adminModal .glass-card>input {
+    background: rgba(30, 41, 59, 0.5) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    color: var(--text-main) !important;
+}
+
+[data-theme="dark"] input[type='range'] {
+    background-color: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] input[type="range"]::-moz-range-track {
+    background-color: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] input[type="range"]::-ms-fill-upper {
+    background-color: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    transition: background 0.3s;
+}
+
+.theme-toggle-btn:hover {
+    background: rgba(125, 125, 125, 0.1);
+}
